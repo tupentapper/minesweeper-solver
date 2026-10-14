@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Minesweeper Solver (18x32)</title>
+    <title>Minesweeper Solver (Custom Size)</title>
     <style>
         body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #2c3e50; color: white; margin-top: 20px;}
         .controls { margin-bottom: 15px; display: flex; gap: 10px; align-items: center; }
@@ -15,23 +15,28 @@
         .keypad button:hover { background-color: #95a5a6; }
         .keypad button.active { background-color: #f1c40f !important; color: #2c3e50; box-shadow: 0 0 8px #f1c40f; transform: scale(1.1); }
 
-        /* Khung thống kê mìn */
-        .stats-panel { margin-bottom: 15px; background-color: #1abc9c; padding: 8px 15px; border-radius: 6px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);}
-        .stats-panel input { width: 70px; padding: 5px; font-size: 14px; font-weight: bold; text-align: center; border: none; border-radius: 4px; outline: none;}
+        /* Khung cài đặt kích thước và mìn */
+        .settings-container { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
+        .stats-panel { background-color: #1abc9c; padding: 8px 15px; border-radius: 6px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);}
+        .size-panel { background-color: #e67e22; padding: 8px 15px; border-radius: 6px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);}
+        .settings-container input { width: 60px; padding: 5px; font-size: 14px; font-weight: bold; text-align: center; border: none; border-radius: 4px; outline: none;}
+        .size-panel button { background-color: #d35400; padding: 6px 12px; margin-left: 5px; }
+        .size-panel button:hover { background-color: #a84300; }
 
         .board-wrapper { display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 30px;}
         
-        .x-coords { display: grid; grid-template-columns: repeat(18, 30px); gap: 1px; margin-left: 32px; }
+        /* CSS lưới sẽ được Javascript chèn tự động, ở đây chỉ để thiết lập layout chung */
+        .x-coords { display: grid; gap: 1px; margin-left: 32px; }
         .x-coords-top { margin-bottom: 4px; }
         .x-coords-bottom { margin-top: 4px; }
         
-        .y-coords { display: grid; grid-template-rows: repeat(32, 30px); gap: 1px; width: 24px; margin-top: 3px; }
+        .y-coords { display: grid; gap: 1px; width: 24px; margin-top: 3px; }
         .y-coords-left { margin-right: 5px; }
         .y-coords-right { margin-left: 5px; }
         
         .coord { display: flex; justify-content: center; align-items: center; font-size: 11px; color: #bdc3c7; font-weight: bold; user-select: none; }
 
-        #board { display: grid; grid-template-columns: repeat(18, 30px); gap: 1px; background-color: #95a5a6; border: 3px solid #7f8c8d; }
+        #board { display: grid; gap: 1px; background-color: #95a5a6; border: 3px solid #7f8c8d; }
         
         .cell {
             width: 30px; height: 30px; background-color: #bdc3c7; 
@@ -45,8 +50,6 @@
         .cell.revealed { background-color: #ecf0f1; box-shadow: inset 1px 1px #bdc3c7; }
         .cell.safe { background-color: #2ecc71; box-shadow: inset 1px 1px #27ae60; color: white;} 
         .cell.flagged { background-color: #e74c3c; box-shadow: inset 1px 1px #c0392b; color: white;} 
-        
-        /* Hiệu ứng ô đoán (Guess) */
         .cell.guess { background-color: #3498db; box-shadow: inset 1px 1px #2980b9; color: white; font-size: 12px; }
         
         .val-1 { color: #2980b9; } .val-2 { color: #27ae60; } .val-3 { color: #c0392b; }
@@ -71,16 +74,25 @@
 <body>
 
     <div class="instructions">
-        <strong>CHẾ ĐỘ CỌ VẼ (Bảng dọc 18x32):</strong><br>
+        <strong>CHẾ ĐỘ CỌ VẼ - MINESWEEPER SOLVER:</strong><br>
         1. Bấm số/công cụ (hoặc gõ số <b>1-8</b>, phím <b>Q</b>). Click Trái để điền, Click Phải để cắm cờ.<br>
         2. Nhấn phím <b>R</b> trên bàn phím để chạy Giải nhanh (1 Bước).<br>
-        <em>💡 Gốc tọa độ (1, 1) hiện đang nằm ở góc <b>Dưới Cùng Bên Trái</b>.</em>
     </div>
 
-    <div class="stats-panel">
-        <strong style="color: #fff; text-shadow: 1px 1px 2px #000;">💣 TỔNG MÌN CỦA VÁN:</strong>
-        <input type="number" id="total-mines" value="150" placeholder="VD: 130" onchange="renderBoard()" onkeyup="renderBoard()">
-        <span id="remaining-text" style="font-weight: bold; font-size: 16px; color: #fff; margin-left: 10px;">Chưa cắm cờ nào</span>
+    <!-- Khung Cài Đặt (Kích thước & Số Mìn) -->
+    <div class="settings-container">
+        <div class="size-panel">
+            <strong style="color: #fff; text-shadow: 1px 1px 2px #000;">📐 KÍCH THƯỚC:</strong>
+            <label style="color: white; margin-left: 5px;">Ngang: <input type="number" id="input-cols" value="18"></label>
+            <label style="color: white; margin-left: 5px;">Dọc: <input type="number" id="input-rows" value="32"></label>
+            <button onclick="applyBoardSize()">Áp dụng</button>
+        </div>
+        
+        <div class="stats-panel">
+            <strong style="color: #fff; text-shadow: 1px 1px 2px #000;">💣 TỔNG MÌN:</strong>
+            <input type="number" id="total-mines" value="150" onchange="renderBoard()" onkeyup="renderBoard()">
+            <span id="remaining-text" style="font-weight: bold; font-size: 16px; color: #fff; margin-left: 10px;">Còn lại: 150 🚩</span>
+        </div>
     </div>
 
     <div class="keypad" id="toolbar">
@@ -114,10 +126,34 @@
     </div>
 
     <script>
-        const COLS = 18;
-        const ROWS = 32;
+        // Các biến kích thước đã trở thành biến động
+        let COLS = 18;
+        let ROWS = 32;
         let board = [];
         let currentTool = 1;
+
+        // Hàm áp dụng kích thước mới từ người dùng
+        function applyBoardSize() {
+            let newCols = parseInt(document.getElementById('input-cols').value);
+            let newRows = parseInt(document.getElementById('input-rows').value);
+            
+            if (isNaN(newCols) || isNaN(newRows) || newCols <= 0 || newRows <= 0) {
+                alert("Kích thước không hợp lệ. Vui lòng nhập số lớn hơn 0.");
+                return;
+            }
+            
+            COLS = newCols;
+            ROWS = newRows;
+            
+            // Xóa rỗng các bảng hiển thị hiện tại để tránh lỗi giao diện
+            document.getElementById('x-coords-top').innerHTML = '';
+            document.getElementById('x-coords-bottom').innerHTML = '';
+            document.getElementById('y-coords-left').innerHTML = '';
+            document.getElementById('y-coords-right').innerHTML = '';
+            document.getElementById('board').innerHTML = '';
+            
+            initBoard();
+        }
 
         function initBoard() {
             board = [];
@@ -132,23 +168,32 @@
             renderBoard();
         }
 
-        // Đã cập nhật gốc tọa độ (1, 1) xuống dưới cùng bên trái
         function setupCoordinates() {
             const xTop = document.getElementById('x-coords-top');
             const xBottom = document.getElementById('x-coords-bottom');
+            
+            // Áp dụng linh động số cột cho CSS Grid
+            xTop.style.gridTemplateColumns = `repeat(${COLS}, 30px)`;
+            xBottom.style.gridTemplateColumns = `repeat(${COLS}, 30px)`;
+            
             xTop.innerHTML = ''; xBottom.innerHTML = '';
             for (let x = 0; x < COLS; x++) {
-                let el1 = document.createElement('div'); el1.className = 'coord'; el1.innerText = COLS - x; // Top: 18 -> 1
-                let el2 = document.createElement('div'); el2.className = 'coord'; el2.innerText = x + 1;    // Bottom: 1 -> 18
+                let el1 = document.createElement('div'); el1.className = 'coord'; el1.innerText = COLS - x; 
+                let el2 = document.createElement('div'); el2.className = 'coord'; el2.innerText = x + 1;    
                 xTop.appendChild(el1); xBottom.appendChild(el2);
             }
             
             const yLeft = document.getElementById('y-coords-left');
             const yRight = document.getElementById('y-coords-right');
+            
+            // Áp dụng linh động số hàng cho CSS Grid
+            yLeft.style.gridTemplateRows = `repeat(${ROWS}, 30px)`;
+            yRight.style.gridTemplateRows = `repeat(${ROWS}, 30px)`;
+
             yLeft.innerHTML = ''; yRight.innerHTML = '';
             for (let y = 0; y < ROWS; y++) {
-                let el1 = document.createElement('div'); el1.className = 'coord'; el1.innerText = ROWS - y; // Left: 32 -> 1
-                let el2 = document.createElement('div'); el2.className = 'coord'; el2.innerText = y + 1;    // Right: 1 -> 32
+                let el1 = document.createElement('div'); el1.className = 'coord'; el1.innerText = ROWS - y; 
+                let el2 = document.createElement('div'); el2.className = 'coord'; el2.innerText = y + 1;    
                 yLeft.appendChild(el1); yRight.appendChild(el2);
             }
         }
@@ -163,7 +208,10 @@
 
         document.addEventListener('keydown', (e) => {
             let key = e.key.toUpperCase();
-            if(document.activeElement.id === 'total-mines') return; 
+            
+            // Bỏ chặn nhập liệu nếu người dùng đang gõ vào các ô input kích thước hoặc mìn
+            let activeId = document.activeElement.id;
+            if (activeId === 'total-mines' || activeId === 'input-cols' || activeId === 'input-rows') return; 
             
             if (key >= '1' && key <= '8') selectTool(parseInt(key));
             else if (key === 'Q') selectTool('Q'); 
@@ -223,6 +271,9 @@
         function renderBoard() {
             const boardEl = document.getElementById('board');
             if (!boardEl) return;
+            
+            // Cập nhật linh động số cột cho bảng game chính
+            boardEl.style.gridTemplateColumns = `repeat(${COLS}, 30px)`;
             
             let flagCount = 0;
             for (let y = 0; y < ROWS; y++) {
