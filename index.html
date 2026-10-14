@@ -4,7 +4,12 @@
     <meta charset="UTF-8">
     <title>Minesweeper Solver (Custom Size)</title>
     <style>
-        body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #2c3e50; color: white; margin-top: 20px;}
+        /* Đã thêm user-select: none để khóa bôi đen toàn trang khi kéo chuột */
+        body { 
+            font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; 
+            background-color: #2c3e50; color: white; margin-top: 20px;
+            user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;
+        }
         .controls { margin-bottom: 15px; display: flex; gap: 10px; align-items: center; }
         .instructions { font-size: 14px; color: #bdc3c7; margin-bottom: 15px; text-align: center; line-height: 1.6;}
         button { padding: 8px 16px; font-size: 14px; cursor: pointer; border-radius: 4px; border: none; background-color: #3498db; color: white; font-weight: bold; transition: 0.1s;}
@@ -69,11 +74,12 @@
         .highlight-guess { animation: pulseGuess 1.5s infinite; z-index: 6; }
     </style>
 </head>
-<body>
+<!-- Lệnh khóa cứng menu chuột phải ở cấp độ HTML -->
+<body oncontextmenu="return false;">
 
     <div class="instructions">
         <strong>MINESWEEPER SOLVER</strong><br>
-        1. Click/Kéo Chuột Trái để điền nhanh số. <b>Click/Kéo Chuột Phải để cắm cờ hoặc XÓA nếu điền sai.</b><br>
+        1. Click/Kéo Chuột Trái để điền nhanh số. <b>Click/Kéo Chuột Phải để cắm cờ hoặc XÓA.</b><br>
         2. Nhấn phím <b>R</b> để chạy Giải nhanh (1 Bước). Nhấn <b>Ctrl + Z</b> để hoàn tác (Undo).
     </div>
 
@@ -113,7 +119,7 @@
         <button onclick="autoSolve()" style="background-color: #27ae60;">Giải liên tục đến khi kẹt</button>
     </div>
 
-    <div class="board-wrapper">
+    <div class="board-wrapper" oncontextmenu="return false;">
         <div id="x-coords-top" class="x-coords x-coords-top"></div>
         <div style="display: flex;">
             <div id="y-coords-left" class="y-coords y-coords-left"></div>
@@ -124,8 +130,8 @@
     </div>
 
     <script>
-        // Khóa menu chuột phải mặc định trên toàn bộ trang web
-        document.addEventListener('contextmenu', event => event.preventDefault());
+        // Gia cố thêm khóa menu chuột phải bằng Javascript cho toàn bộ window
+        window.addEventListener('contextmenu', event => event.preventDefault(), { passive: false });
 
         let COLS = 18;
         let ROWS = 32;
@@ -246,6 +252,8 @@
                     let el = document.createElement('div');
                     el.id = `cell-${y}-${x}`;
                     el.className = 'cell';
+                    // Đóng băng sự kiện contextmenu trên từng ô
+                    el.oncontextmenu = (e) => { e.preventDefault(); return false; };
 
                     el.onmousedown = (e) => {
                         e.preventDefault(); 
