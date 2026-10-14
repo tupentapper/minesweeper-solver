@@ -124,17 +124,19 @@
     </div>
 
     <script>
+        // Khóa menu chuột phải mặc định trên toàn bộ trang web
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
         let COLS = 18;
         let ROWS = 32;
         let board = [];
         let boardHistory = []; 
         let currentTool = 1;
 
-        // Trạng thái theo dõi thao tác kéo thả chuột
         let isDrawing = false;
         let drawButton = -1;
         let hasSavedForThisDrag = false;
-        let lastDraggedCell = null; // Chống nháy click liên tục trong 1 ô
+        let lastDraggedCell = null; 
 
         document.addEventListener('mousedown', (e) => {
             isDrawing = true;
@@ -202,7 +204,7 @@
                 board.push(row);
             }
             setupCoordinates();
-            createBoardDOM(); // Khởi tạo HTML DOM 1 lần duy nhất để tối ưu FPS
+            createBoardDOM(); 
             renderBoard();
         }
 
@@ -234,7 +236,6 @@
             }
         }
 
-        // Tạo sẵn khung thẻ HTML để tái sử dụng
         function createBoardDOM() {
             const boardEl = document.getElementById('board');
             boardEl.style.gridTemplateColumns = `repeat(${COLS}, 30px)`;
@@ -246,11 +247,10 @@
                     el.id = `cell-${y}-${x}`;
                     el.className = 'cell';
 
-                    // Sự kiện Click đầu tiên
                     el.onmousedown = (e) => {
                         e.preventDefault(); 
                         recordAction(); 
-                        lastDraggedCell = {x, y}; // Lưu lại vị trí để chống nháy
+                        lastDraggedCell = {x, y}; 
 
                         if (e.button === 0) {
                             applyToolToCell(x, y);
@@ -259,10 +259,8 @@
                         }
                     };
 
-                    // Sự kiện kéo chuột (Hover qua)
                     el.onmouseenter = (e) => {
                         if (isDrawing) {
-                            // Nếu vẫn ở trong ô cũ thì không xử lý lại (tránh nháy xóa)
                             if (lastDraggedCell && lastDraggedCell.x === x && lastDraggedCell.y === y) return;
                             
                             recordAction(); 
@@ -276,7 +274,6 @@
                         }
                     };
 
-                    el.oncontextmenu = (e) => e.preventDefault();
                     boardEl.appendChild(el);
                 }
             }
@@ -327,7 +324,6 @@
             }
         }
 
-        // Logic chuột trái
         function applyToolToCell(x, y) {
             let cell = board[y][x];
             let changed = false;
@@ -357,7 +353,6 @@
             }
         }
 
-        // Logic chuột phải (Xóa hoặc Cắm cờ)
         function handleRightClickAction(x, y) {
             clearGuesses();
             let cell = board[y][x];
@@ -385,7 +380,6 @@
             return neighbors;
         }
 
-        // Hàm Render mới: Chỉ cập nhật class và text, KHÔNG load lại thẻ div
         function renderBoard() {
             let flagCount = 0;
             for (let y = 0; y < ROWS; y++) {
@@ -411,11 +405,9 @@
                     let el = document.getElementById(`cell-${y}-${x}`);
                     if (!el) continue;
 
-                    // Xóa các class cũ và đặt lại class cơ bản
                     el.className = 'cell';
                     el.innerText = '';
 
-                    // Cập nhật trạng thái hiển thị
                     if (cell.state === 'revealed') {
                         el.classList.add('revealed');
                         if (cell.value > 0) {
@@ -432,7 +424,6 @@
                         el.classList.add('highlight-guess');
                     }
 
-                    // Viền sáng
                     if (cell.isNew && cell.state !== 'guess') {
                         el.classList.add('highlight-new');
                     }
