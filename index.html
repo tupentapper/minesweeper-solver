@@ -15,7 +15,6 @@
         .keypad button:hover { background-color: #95a5a6; }
         .keypad button.active { background-color: #f1c40f !important; color: #2c3e50; box-shadow: 0 0 8px #f1c40f; transform: scale(1.1); }
 
-        /* Khung cài đặt kích thước và mìn */
         .settings-container { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
         .stats-panel { background-color: #1abc9c; padding: 8px 15px; border-radius: 6px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);}
         .size-panel { background-color: #e67e22; padding: 8px 15px; border-radius: 6px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);}
@@ -25,7 +24,6 @@
 
         .board-wrapper { display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 30px;}
         
-        /* CSS lưới sẽ được Javascript chèn tự động, ở đây chỉ để thiết lập layout chung */
         .x-coords { display: grid; gap: 1px; margin-left: 32px; }
         .x-coords-top { margin-bottom: 4px; }
         .x-coords-bottom { margin-top: 4px; }
@@ -36,7 +34,7 @@
         
         .coord { display: flex; justify-content: center; align-items: center; font-size: 11px; color: #bdc3c7; font-weight: bold; user-select: none; }
 
-        #board { display: grid; gap: 1px; background-color: #95a5a6; border: 3px solid #7f8c8d; }
+        #board { display: grid; gap: 1px; background-color: #95a5a6; border: 3px solid #7f8c8d; user-select: none; }
         
         .cell {
             width: 30px; height: 30px; background-color: #bdc3c7; 
@@ -74,12 +72,11 @@
 <body>
 
     <div class="instructions">
-        <strong>CHẾ ĐỘ CỌ VẼ - MINESWEEPER SOLVER:</strong><br>
-        1. Bấm số/công cụ (hoặc gõ số <b>1-8</b>, phím <b>Q</b>). Click Trái để điền, Click Phải để cắm cờ.<br>
-        2. Nhấn phím <b>R</b> trên bàn phím để chạy Giải nhanh (1 Bước).<br>
+        <strong>MINESWEEPER SOLVER</strong><br>
+        1. Click/Kéo Chuột Trái để điền nhanh số. <b>Click/Kéo Chuột Phải để cắm cờ hoặc XÓA nếu điền sai.</b><br>
+        2. Nhấn phím <b>R</b> để chạy Giải nhanh (1 Bước). Nhấn <b>Ctrl + Z</b> để hoàn tác (Undo).
     </div>
 
-    <!-- Khung Cài Đặt (Kích thước & Số Mìn) -->
     <div class="settings-container">
         <div class="size-panel">
             <strong style="color: #fff; text-shadow: 1px 1px 2px #000;">📐 KÍCH THƯỚC:</strong>
@@ -110,6 +107,7 @@
     </div>
 
     <div class="controls">
+        <button onclick="undo()" style="background-color: #95a5a6; color: #2c3e50;">Hoàn tác (Ctrl+Z)</button>
         <button onclick="initBoard()">Làm mới bảng</button>
         <button onclick="triggerSolve()" style="background-color: #e67e22;">Tìm ô An Toàn & Mìn [Phím R]</button>
         <button onclick="autoSolve()" style="background-color: #27ae60;">Giải liên tục đến khi kẹt</button>
@@ -126,13 +124,52 @@
     </div>
 
     <script>
-        // Các biến kích thước đã trở thành biến động
         let COLS = 18;
         let ROWS = 32;
         let board = [];
+        let boardHistory = []; 
         let currentTool = 1;
 
-        // Hàm áp dụng kích thước mới từ người dùng
+        // Trạng thái theo dõi thao tác kéo thả chuột
+        let isDrawing = false;
+        let drawButton = -1;
+        let hasSavedForThisDrag = false;
+        let lastDraggedCell = null; // Chống nháy click liên tục trong 1 ô
+
+        document.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            drawButton = e.button;
+            hasSavedForThisDrag = false;
+            lastDraggedCell = null;
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDrawing = false;
+            drawButton = -1;
+            hasSavedForThisDrag = false;
+            lastDraggedCell = null;
+        });
+
+        function saveState() {
+            if (boardHistory.length > 50) boardHistory.shift(); 
+            boardHistory.push(JSON.stringify(board));
+        }
+
+        function undo() {
+            if (boardHistory.length > 0) {
+                let previousState = boardHistory.pop();
+                board = JSON.parse(previousState);
+                renderBoard();
+            }
+        }
+
+        function recordAction() {
+            if (!hasSavedForThisDrag) {
+                saveState();
+                hasSavedForThisDrag = true;
+            }
+        }
+
         function applyBoardSize() {
             let newCols = parseInt(document.getElementById('input-cols').value);
             let newRows = parseInt(document.getElementById('input-rows').value);
@@ -145,7 +182,6 @@
             COLS = newCols;
             ROWS = newRows;
             
-            // Xóa rỗng các bảng hiển thị hiện tại để tránh lỗi giao diện
             document.getElementById('x-coords-top').innerHTML = '';
             document.getElementById('x-coords-bottom').innerHTML = '';
             document.getElementById('y-coords-left').innerHTML = '';
@@ -157,6 +193,7 @@
 
         function initBoard() {
             board = [];
+            boardHistory = []; 
             for (let y = 0; y < ROWS; y++) {
                 let row = [];
                 for (let x = 0; x < COLS; x++) {
@@ -165,6 +202,7 @@
                 board.push(row);
             }
             setupCoordinates();
+            createBoardDOM(); // Khởi tạo HTML DOM 1 lần duy nhất để tối ưu FPS
             renderBoard();
         }
 
@@ -172,7 +210,6 @@
             const xTop = document.getElementById('x-coords-top');
             const xBottom = document.getElementById('x-coords-bottom');
             
-            // Áp dụng linh động số cột cho CSS Grid
             xTop.style.gridTemplateColumns = `repeat(${COLS}, 30px)`;
             xBottom.style.gridTemplateColumns = `repeat(${COLS}, 30px)`;
             
@@ -186,7 +223,6 @@
             const yLeft = document.getElementById('y-coords-left');
             const yRight = document.getElementById('y-coords-right');
             
-            // Áp dụng linh động số hàng cho CSS Grid
             yLeft.style.gridTemplateRows = `repeat(${ROWS}, 30px)`;
             yRight.style.gridTemplateRows = `repeat(${ROWS}, 30px)`;
 
@@ -195,6 +231,54 @@
                 let el1 = document.createElement('div'); el1.className = 'coord'; el1.innerText = ROWS - y; 
                 let el2 = document.createElement('div'); el2.className = 'coord'; el2.innerText = y + 1;    
                 yLeft.appendChild(el1); yRight.appendChild(el2);
+            }
+        }
+
+        // Tạo sẵn khung thẻ HTML để tái sử dụng
+        function createBoardDOM() {
+            const boardEl = document.getElementById('board');
+            boardEl.style.gridTemplateColumns = `repeat(${COLS}, 30px)`;
+            boardEl.innerHTML = '';
+            
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    let el = document.createElement('div');
+                    el.id = `cell-${y}-${x}`;
+                    el.className = 'cell';
+
+                    // Sự kiện Click đầu tiên
+                    el.onmousedown = (e) => {
+                        e.preventDefault(); 
+                        recordAction(); 
+                        lastDraggedCell = {x, y}; // Lưu lại vị trí để chống nháy
+
+                        if (e.button === 0) {
+                            applyToolToCell(x, y);
+                        } else if (e.button === 2) {
+                            handleRightClickAction(x, y);
+                        }
+                    };
+
+                    // Sự kiện kéo chuột (Hover qua)
+                    el.onmouseenter = (e) => {
+                        if (isDrawing) {
+                            // Nếu vẫn ở trong ô cũ thì không xử lý lại (tránh nháy xóa)
+                            if (lastDraggedCell && lastDraggedCell.x === x && lastDraggedCell.y === y) return;
+                            
+                            recordAction(); 
+                            lastDraggedCell = {x, y};
+                            
+                            if (drawButton === 0) {
+                                applyToolToCell(x, y);
+                            } else if (drawButton === 2) {
+                                handleRightClickAction(x, y);
+                            }
+                        }
+                    };
+
+                    el.oncontextmenu = (e) => e.preventDefault();
+                    boardEl.appendChild(el);
+                }
             }
         }
 
@@ -207,9 +291,13 @@
         }
 
         document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                undo();
+                return;
+            }
+
             let key = e.key.toUpperCase();
-            
-            // Bỏ chặn nhập liệu nếu người dùng đang gõ vào các ô input kích thước hoặc mìn
             let activeId = document.activeElement.id;
             if (activeId === 'total-mines' || activeId === 'input-cols' || activeId === 'input-rows') return; 
             
@@ -239,18 +327,47 @@
             }
         }
 
+        // Logic chuột trái
         function applyToolToCell(x, y) {
-            clearGuesses(); 
             let cell = board[y][x];
+            let changed = false;
+
             if (currentTool === 'CLEAR') {
-                cell.state = 'hidden'; cell.value = null; cell.isNew = false; 
+                if (cell.state !== 'hidden' || cell.value !== null || cell.isNew) { 
+                    cell.state = 'hidden'; cell.value = null; cell.isNew = false; changed = true; 
+                }
             } else if (currentTool === 'F') {
-                cell.state = 'flagged'; cell.value = null; cell.isNew = false;
+                if (cell.state !== 'flagged' || cell.isNew) { 
+                    cell.state = 'flagged'; cell.value = null; cell.isNew = false; changed = true; 
+                }
             } else if (currentTool === 'Q') {
-                cell.state = 'revealed'; cell.value = 0; cell.isNew = false;
+                if (cell.state !== 'revealed' || cell.value !== 0 || cell.isNew) { 
+                    cell.state = 'revealed'; cell.value = 0; cell.isNew = false; changed = true; 
+                }
             } else if (currentTool >= 1 && currentTool <= 8) {
-                cell.state = 'revealed'; cell.value = parseInt(currentTool); cell.isNew = false;
+                let val = parseInt(currentTool);
+                if (cell.state !== 'revealed' || cell.value !== val || cell.isNew) { 
+                    cell.state = 'revealed'; cell.value = val; cell.isNew = false; changed = true; 
+                }
             }
+
+            if (changed) {
+                clearGuesses();
+                renderBoard();
+            }
+        }
+
+        // Logic chuột phải (Xóa hoặc Cắm cờ)
+        function handleRightClickAction(x, y) {
+            clearGuesses();
+            let cell = board[y][x];
+            if (cell.state !== 'hidden' && cell.state !== 'guess') {
+                cell.state = 'hidden';
+                cell.value = null;
+            } else {
+                cell.state = 'flagged';
+            }
+            cell.isNew = false; 
             renderBoard();
         }
 
@@ -268,19 +385,15 @@
             return neighbors;
         }
 
+        // Hàm Render mới: Chỉ cập nhật class và text, KHÔNG load lại thẻ div
         function renderBoard() {
-            const boardEl = document.getElementById('board');
-            if (!boardEl) return;
-            
-            // Cập nhật linh động số cột cho bảng game chính
-            boardEl.style.gridTemplateColumns = `repeat(${COLS}, 30px)`;
-            
             let flagCount = 0;
             for (let y = 0; y < ROWS; y++) {
                 for (let x = 0; x < COLS; x++) {
                     if (board[y][x].state === 'flagged') flagCount++;
                 }
             }
+
             let totalInput = parseInt(document.getElementById('total-mines').value);
             let remText = document.getElementById('remaining-text');
             if (!isNaN(totalInput) && totalInput > 0) {
@@ -292,13 +405,17 @@
                 remText.style.color = '#fff';
             }
 
-            boardEl.innerHTML = '';
             for (let y = 0; y < ROWS; y++) {
                 for (let x = 0; x < COLS; x++) {
                     let cell = board[y][x];
-                    let el = document.createElement('div');
-                    el.className = 'cell';
+                    let el = document.getElementById(`cell-${y}-${x}`);
+                    if (!el) continue;
 
+                    // Xóa các class cũ và đặt lại class cơ bản
+                    el.className = 'cell';
+                    el.innerText = '';
+
+                    // Cập nhật trạng thái hiển thị
                     if (cell.state === 'revealed') {
                         el.classList.add('revealed');
                         if (cell.value > 0) {
@@ -315,21 +432,10 @@
                         el.classList.add('highlight-guess');
                     }
 
+                    // Viền sáng
                     if (cell.isNew && cell.state !== 'guess') {
                         el.classList.add('highlight-new');
                     }
-
-                    el.onmousedown = (e) => {
-                        if (e.button === 0) applyToolToCell(x, y);
-                        else if (e.button === 2) {
-                            clearGuesses();
-                            board[y][x].state = (board[y][x].state === 'flagged') ? 'hidden' : 'flagged';
-                            board[y][x].isNew = false; 
-                            renderBoard();
-                        }
-                    };
-                    el.oncontextmenu = (e) => e.preventDefault();
-                    boardEl.appendChild(el);
                 }
             }
         }
@@ -508,7 +614,8 @@
             return madeProgress;
         }
 
-        function triggerSolve() {
+        function triggerSolve(isAuto = false) {
+            if (!isAuto) saveState(); 
             clearHighlights(); 
             clearGuesses();
 
@@ -531,8 +638,9 @@
         }
 
         function autoSolve() {
+            saveState(); 
             let interval = setInterval(() => {
-                let progress = triggerSolve();
+                let progress = triggerSolve(true); 
                 if (!progress) clearInterval(interval);
             }, 150); 
         }
